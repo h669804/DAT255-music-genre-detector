@@ -1,0 +1,4 @@
+# Ignore original data
+data/genres_original
+data/images_original
+data/features_3*.csv
