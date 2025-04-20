@@ -1,4 +1,5 @@
 # Ignore original data
-data/genres_original
-data/images_original
-data/features_3*.csv
+data/genres*
+data/images*
+data/features_30_sec.csv
+data/features_3_sec.csv
