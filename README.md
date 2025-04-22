@@ -72,6 +72,8 @@ Requirements to run the app (not the notebooks)
 
 ## Reproduction Guide
 
+This project was initially intended to be deployed online, but problems with integration and limited upload speed prohibited the deployment. The app is therefore designed to be run on your local machine.
+
 **NOTE:** This application was developed using Python 3.12.4
 
 ### 1. Clone the repository
