@@ -56,8 +56,6 @@ def preprocess_1d_cnn(audio_data, sample_rate=22050):
             print("Audio data is empty or None")
             return None
         
-        print(f"Processing 1D CNN audio, length: {len(audio_data)} samples")
-        
         chunk_duration = 4
         overlap = 2
         chunk_samples = int(chunk_duration * sample_rate)
@@ -83,7 +81,6 @@ def preprocess_1d_cnn(audio_data, sample_rate=22050):
                 chunks.append(chunk)
         
         chunks = np.array(chunks)[..., np.newaxis]
-        print(f"Created {len(chunks)} chunks for 1D CNN")
         return chunks
     except Exception as e:
         print(f"Error preprocessing for 1D CNN: {str(e)}")
@@ -95,8 +92,6 @@ def preprocess_2d_cnn(audio_data, sample_rate=22050, target_shape=(150, 150), ch
         if audio_data is None or len(audio_data) == 0:
             print("Audio data is empty or None")
             return None
-            
-        print(f"Processing 2D CNN audio, length: {len(audio_data)} samples")
         
         chunk_samples = chunk_duration * sample_rate
         overlap_samples = overlap_duration * sample_rate
@@ -116,20 +111,18 @@ def preprocess_2d_cnn(audio_data, sample_rate=22050, target_shape=(150, 150), ch
             data.append(mel_spectrogram)
         
         result = np.array(data)
-        print(f"Created {len(data)} spectrograms for 2D CNN")
         return result
     except Exception as e:
         print(f"Error preprocessing for 2D CNN: {str(e)}")
         traceback.print_exc()
         return None
 
-def preprocess_fcnn(audio_data, sample_rate=22050, scaler=None, use_3sec_chunks=False):
+def preprocess_fcnn(audio_data, sample_rate=22050, scaler=None, use_3sec_chunks=True):
     try:
         if audio_data is None or len(audio_data) == 0:
             print("Audio data is empty or None")
             return None
             
-        print(f"Processing FCNN audio, length: {len(audio_data)} samples")
         
         # If using 3-second chunks, split into ten 3-second segments
         if use_3sec_chunks:
@@ -206,7 +199,6 @@ def preprocess_fcnn(audio_data, sample_rate=22050, scaler=None, use_3sec_chunks=
         features = np.mean(all_features, axis=0) if use_3sec_chunks else all_features[0]
         
         feature_count = len(features)
-        print(f"Extracted {feature_count} features for FCNN")
         
         
         features = np.array([float(f) for f in features], dtype=np.float32)
@@ -217,9 +209,7 @@ def preprocess_fcnn(audio_data, sample_rate=22050, scaler=None, use_3sec_chunks=
         else:
             features = scaler.transform(features.reshape(1, -1)).flatten()
         
-        print(f"Normalized feature values: {features}")
         result = features.reshape(1, -1)
-        print(f"Final feature shape: {result.shape}")
         return result
     except Exception as e:
         print(f"Error preprocessing for FCNN: {str(e)}")
@@ -330,17 +320,22 @@ def process_audio(audio_file=None):
             if MODEL_1D is not None:
                 start_time = time.time()
                 all_pred_1d = []
+                print("Processing 1D CNN")
                 for i, chunk in enumerate(audio_chunks):
-                    print(f"Processing 1D CNN chunk {i+1}/{len(audio_chunks)}")
+                    
                     input_1d = preprocess_1d_cnn(chunk, sample_rate=sr)
                     if input_1d is not None and len(input_1d) > 0:
                         pred_1d = MODEL_1D.predict(input_1d, verbose=0)
                         all_pred_1d.append(pred_1d)
-                    else:
-                        print(f"Error preprocessing 1D CNN chunk {i+1}")
                 if all_pred_1d:
                     all_pred_1d = np.concatenate(all_pred_1d, axis=0)
                     avg_pred_1d = np.mean(all_pred_1d, axis=0)
+                    
+                    # Print detailed prediction information
+                    print(f"1D CNN average prediction probabilities:")
+                    for i, genre in enumerate(GENRES):
+                        print(f"  {genre}: {avg_pred_1d[i]:.4f}")
+                    
                     genre_1d = GENRES[np.argmax(avg_pred_1d)]
                     conf_1d = np.max(avg_pred_1d)
                     results[0] = f"{genre_1d} ({conf_1d:.2f})"
@@ -362,17 +357,21 @@ def process_audio(audio_file=None):
             if MODEL_2D is not None:
                 start_time = time.time()
                 all_pred_2d = []
+                print("Processing 2D CNN")
                 for i, chunk in enumerate(audio_chunks):
-                    print(f"Processing 2D CNN chunk {i+1}/{len(audio_chunks)}")
                     input_2d = preprocess_2d_cnn(chunk, sample_rate=sr)
                     if input_2d is not None and len(input_2d) > 0:
                         pred_2d = MODEL_2D.predict(input_2d, verbose=0)
                         all_pred_2d.append(pred_2d)
-                    else:
-                        print(f"Error preprocessing 2D CNN chunk {i+1}")
                 if all_pred_2d:
                     all_pred_2d = np.concatenate(all_pred_2d, axis=0)
                     avg_pred_2d = np.mean(all_pred_2d, axis=0)
+                    
+                    # Print detailed prediction information
+                    print(f"2D CNN average prediction probabilities:")
+                    for i, genre in enumerate(GENRES):
+                        print(f"  {genre}: {avg_pred_2d[i]:.4f}")
+                    
                     genre_2d = GENRES[np.argmax(avg_pred_2d)]
                     conf_2d = np.max(avg_pred_2d)
                     results[1] = f"{genre_2d} ({conf_2d:.2f})"
@@ -394,18 +393,21 @@ def process_audio(audio_file=None):
             if MODEL_FCNN is not None:
                 start_time = time.time()
                 all_pred_fcnn = []
+                print("Processing FCNN")
                 for i, chunk in enumerate(audio_chunks):
-                    print(f"Processing FCNN chunk {i+1}/{len(audio_chunks)}")
                     input_fcnn = preprocess_fcnn(chunk, sample_rate=sr, scaler=scaler, use_3sec_chunks=False)  # Set to True if use_combined=True
                     if input_fcnn is not None:
                         pred_fcnn = MODEL_FCNN.predict(input_fcnn, verbose=0)
                         all_pred_fcnn.append(pred_fcnn)
-                    else:
-                        print(f"Error preprocessing FCNN chunk {i+1}")
                 if all_pred_fcnn:
                     all_pred_fcnn = np.concatenate(all_pred_fcnn, axis=0)
                     avg_pred_fcnn = np.mean(all_pred_fcnn, axis=0)
-                    print(f"FCNN average prediction probabilities: {avg_pred_fcnn}")
+                    
+                    # Print detailed prediction information
+                    print(f"FCNN average prediction probabilities:")
+                    for i, genre in enumerate(GENRES):
+                        print(f"  {genre}: {avg_pred_fcnn[i]:.4f}")
+                    
                     genre_fcnn = GENRES[np.argmax(avg_pred_fcnn)]
                     conf_fcnn = np.max(avg_pred_fcnn)
                     results[2] = f"{genre_fcnn} ({conf_fcnn:.2f})"
@@ -427,7 +429,7 @@ def process_audio(audio_file=None):
         print(f"Error in process_audio: {str(e)}")
         traceback.print_exc()
         return ["Error processing audio", "Error processing audio", "Error processing audio", "N/A", "N/A", "N/A"]
-
+    
 # Gradio app
 with gr.Blocks() as app:
     gr.Markdown(description)
